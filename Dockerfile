@@ -8,6 +8,8 @@ FROM php:8.2-apache
 # - libmagickwand-dev: for PHP Imagick extension (thumbnail generation)
 # - libheif-dev, libheif-examples: for HEIC/HEIF image conversion
 #   (heif-convert command used by maestroerror/php-heic-to-jpg)
+# - zip: needed by maestroerror/heif-converter which is pulled in as a dependency
+#   as it downloads and extracts a ZIP file
 RUN apt-get update && apt-get install -y \
     libcurl4-openssl-dev \
     libpng-dev \
@@ -17,6 +19,7 @@ RUN apt-get update && apt-get install -y \
     libheif-dev \
     libheif-examples \
     openssl \
+    zip \
     && docker-php-ext-configure gd --with-jpeg --with-webp \
     && docker-php-ext-install curl gd \
     && pecl install imagick \
@@ -32,6 +35,12 @@ COPY . /var/www/html/
 
 # Install PHP dependencies (creates vendor/ and composer.json)
 RUN cd /var/www/html && composer require maestroerror/php-heic-to-jpg --no-interaction --no-progress
+
+# Remove the zip package after it had been used by one of the PHP
+# dependencies during the build process, and run an APT auto-remove
+# to remove other unneeded packages.
+RUN apt-get remove -y zip \
+    && apt-get autoremove -y
 
 # Create the data directory with correct ownership.
 # This is overridden at runtime by the mounted volume, but the directory
